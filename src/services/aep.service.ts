@@ -1,5 +1,13 @@
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { createHmac } from 'crypto';
+import {
+  Schema,
+  Dataset,
+  Segment,
+  Profile,
+  QueryResult,
+  Destination
+} from '../types/aep.types';
 
 export class AEPService {
   private baseUrl: string;
@@ -20,7 +28,7 @@ export class AEPService {
     if (this.accessToken) return this.accessToken;
 
     try {
-      const response = await axios.post('https://ims-na1.adobelogin.com/ims/token/v1', {
+      const response = await axios.post<{ access_token: string }>('https://ims-na1.adobelogin.com/ims/token/v1', {
         grant_type: 'client_credentials',
         client_id: this.clientId,
         client_secret: this.clientSecret,
@@ -45,18 +53,18 @@ export class AEPService {
   }
 
   // Schemas API
-  async listSchemas(params: { limit?: number; offset?: number } = {}) {
+  async listSchemas(params: { limit?: number; offset?: number } = {}): Promise<Schema[]> {
     const headers = await this.getHeaders();
-    const response = await axios.get(`${this.baseUrl}/data/foundation/schemaregistry/schemas`, {
-      headers,
-      params
-    });
-    return response.data;
+    const response = await axios.get<{ schemas: Schema[] }>(
+      `${this.baseUrl}/data/foundation/schemaregistry/schemas`,
+      { headers, params }
+    );
+    return response.data.schemas;
   }
 
-  async createSchema(schema: any) {
+  async createSchema(schema: Schema): Promise<Schema> {
     const headers = await this.getHeaders();
-    const response = await axios.post(
+    const response = await axios.post<Schema>(
       `${this.baseUrl}/data/foundation/schemaregistry/schemas`,
       schema,
       { headers }
@@ -65,18 +73,18 @@ export class AEPService {
   }
 
   // Datasets API
-  async listDatasets(params: { limit?: number; offset?: number } = {}) {
+  async listDatasets(params: { limit?: number; offset?: number } = {}): Promise<Dataset[]> {
     const headers = await this.getHeaders();
-    const response = await axios.get(`${this.baseUrl}/data/foundation/catalog/datasets`, {
-      headers,
-      params
-    });
-    return response.data;
+    const response = await axios.get<{ datasets: Dataset[] }>(
+      `${this.baseUrl}/data/foundation/catalog/datasets`,
+      { headers, params }
+    );
+    return response.data.datasets;
   }
 
-  async createDataset(dataset: any) {
+  async createDataset(dataset: Dataset): Promise<Dataset> {
     const headers = await this.getHeaders();
-    const response = await axios.post(
+    const response = await axios.post<Dataset>(
       `${this.baseUrl}/data/foundation/catalog/datasets`,
       dataset,
       { headers }
@@ -85,18 +93,18 @@ export class AEPService {
   }
 
   // Segments API
-  async listSegments(params: { limit?: number; offset?: number } = {}) {
+  async listSegments(params: { limit?: number; offset?: number } = {}): Promise<Segment[]> {
     const headers = await this.getHeaders();
-    const response = await axios.get(`${this.baseUrl}/data/core/ups/segments`, {
-      headers,
-      params
-    });
-    return response.data;
+    const response = await axios.get<{ segments: Segment[] }>(
+      `${this.baseUrl}/data/core/ups/segments`,
+      { headers, params }
+    );
+    return response.data.segments;
   }
 
-  async createSegment(segment: any) {
+  async createSegment(segment: Segment): Promise<Segment> {
     const headers = await this.getHeaders();
-    const response = await axios.post(
+    const response = await axios.post<Segment>(
       `${this.baseUrl}/data/core/ups/segments`,
       segment,
       { headers }
@@ -105,9 +113,9 @@ export class AEPService {
   }
 
   // Data Ingestion API
-  async ingestData(datasetId: string, data: any) {
+  async ingestData(datasetId: string, data: any): Promise<{ id: string; status: string }> {
     const headers = await this.getHeaders();
-    const response = await axios.post(
+    const response = await axios.post<{ id: string; status: string }>(
       `${this.baseUrl}/data/foundation/import/batches/${datasetId}/datasets`,
       data,
       { headers }
@@ -116,9 +124,9 @@ export class AEPService {
   }
 
   // Profile API
-  async getUnifiedProfile(identityValue: string, identityNamespace: string) {
+  async getUnifiedProfile(identityValue: string, identityNamespace: string): Promise<Profile> {
     const headers = await this.getHeaders();
-    const response = await axios.get(
+    const response = await axios.get<Profile>(
       `${this.baseUrl}/data/core/ups/access/entities`,
       {
         headers,
@@ -133,9 +141,9 @@ export class AEPService {
   }
 
   // Query Service API
-  async executeQuery(query: string) {
+  async executeQuery(query: string): Promise<QueryResult> {
     const headers = await this.getHeaders();
-    const response = await axios.post(
+    const response = await axios.post<QueryResult>(
       `${this.baseUrl}/data/foundation/query/queries`,
       { query },
       { headers }
@@ -144,18 +152,18 @@ export class AEPService {
   }
 
   // Destinations API
-  async listDestinations() {
+  async listDestinations(): Promise<Destination[]> {
     const headers = await this.getHeaders();
-    const response = await axios.get(
+    const response = await axios.get<{ destinations: Destination[] }>(
       `${this.baseUrl}/data/core/activation/destinations`,
       { headers }
     );
-    return response.data;
+    return response.data.destinations;
   }
 
-  async activateSegment(destinationId: string, segmentId: string) {
+  async activateSegment(destinationId: string, segmentId: string): Promise<{ status: string }> {
     const headers = await this.getHeaders();
-    const response = await axios.post(
+    const response = await axios.post<{ status: string }>(
       `${this.baseUrl}/data/core/activation/destinations/${destinationId}/activate`,
       {
         segmentIds: [segmentId]
