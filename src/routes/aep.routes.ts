@@ -9,12 +9,11 @@ const aepService = new AEPService();
 // Schema endpoints
 router.get('/schemas', async (req, res, next) => {
   try {
-    const { limit, offset } = req.query;
-    const schemas = await aepService.listSchemas({ 
-      limit: Number(limit), 
-      offset: Number(offset) 
+    const schemas = await aepService.listSchemas();
+    res.json({
+      status: 'success',
+      data: schemas
     });
-    res.json(schemas);
   } catch (error) {
     next(error);
   }

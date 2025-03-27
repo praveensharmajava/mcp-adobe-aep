@@ -17,7 +17,38 @@ export const swaggerSpec = {
         summary: 'List all schemas',
         responses: {
           '200': {
-            description: 'List of schemas'
+            description: 'List of schemas',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      $id: { type: 'string' },
+                      title: { type: 'string' },
+                      description: { type: 'string' },
+                      meta: {
+                        type: 'object',
+                        properties: {
+                          altId: { type: 'string' },
+                          version: { type: 'string' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '400': {
+            description: 'Bad Request'
+          },
+          '401': {
+            description: 'Unauthorized'
+          },
+          '403': {
+            description: 'Forbidden'
           }
         }
       },

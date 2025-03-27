@@ -17,28 +17,66 @@ export class AEPService {
   private accessToken: string | null;
 
   constructor() {
-    this.baseUrl = process.env.AEP_BASE_URL || 'https://platform.adobe.io';
+    // Set default values
+    const defaultBaseUrl = 'https://platform.adobe.io';
+
+    // Load and validate environment variables
+    this.baseUrl = process.env.AEP_BASE_URL || defaultBaseUrl;
     this.clientId = process.env.AEP_CLIENT_ID || '';
     this.clientSecret = process.env.AEP_CLIENT_SECRET || '';
     this.orgId = process.env.AEP_ORG_ID || '';
     this.accessToken = null;
+
+    // Log configuration (safely)
+    console.log('AEP Service Configuration:', {
+      baseUrl: this.baseUrl,
+      clientId: this.clientId ? '***' + this.clientId.slice(-4) : 'missing',
+      clientSecret: this.clientSecret ? '***' + this.clientSecret.slice(-4) : 'missing',
+      orgId: this.orgId ? '***' + this.orgId.slice(-4) : 'missing'
+    });
+
+    // Validate required credentials
+    if (!this.clientId || !this.clientSecret || !this.orgId) {
+      throw new Error('Missing required Adobe credentials. Please check your environment variables: AEP_CLIENT_ID, AEP_CLIENT_SECRET, and AEP_ORG_ID');
+    }
   }
 
   private async getAccessToken(): Promise<string> {
     if (this.accessToken) return this.accessToken;
 
     try {
-      const response = await axios.post<{ access_token: string }>('https://ims-na1.adobelogin.com/ims/token/v1', {
-        grant_type: 'client_credentials',
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        scope: 'AdobeID,openid,read_organizations'
+      console.log('Attempting to get access token with:', {
+        clientId: this.clientId ? '***' + this.clientId.slice(-4) : 'missing',
+        clientSecret: this.clientSecret ? '***' + this.clientSecret.slice(-4) : 'missing',
+        orgId: this.orgId ? '***' + this.orgId.slice(-4) : 'missing'
       });
+
+      // Create form data
+      const formData = new URLSearchParams();
+      formData.append('grant_type', 'client_credentials');
+      formData.append('client_id', this.clientId);
+      formData.append('client_secret', this.clientSecret);
+      formData.append('scope', 'openid,AdobeID,read_organizations,additional_info.projectedProductContext,session');
+
+      const response = await axios.post<{ access_token: string }>(
+        'https://ims-na1.adobelogin.com/ims/token/v2',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        }
+      );
 
       this.accessToken = response.data.access_token;
       return this.accessToken;
-    } catch (error) {
-      throw new Error('Failed to obtain access token');
+    } catch (error: any) {
+      console.error('Detailed error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      throw new Error(`Failed to obtain access token: ${error.message}`);
     }
   }
 
@@ -48,24 +86,47 @@ export class AEPService {
       'Authorization': `Bearer ${accessToken}`,
       'x-api-key': this.clientId,
       'x-gw-ims-org-id': this.orgId,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Accept': 'application/vnd.adobe.xed-id+json'
     };
   }
 
   // Schemas API
-  async listSchemas(params: { limit?: number; offset?: number } = {}): Promise<Schema[]> {
+  async listSchemas(): Promise<Schema[]> {
+    const url = `${this.baseUrl}/data/foundation/schemaregistry/tenant/schemas?orderby=title`;
+    
+    console.log('Making API call to:', url);
     const headers = await this.getHeaders();
-    const response = await axios.get<{ schemas: Schema[] }>(
-      `${this.baseUrl}/data/foundation/schemaregistry/schemas`,
-      { headers, params }
-    );
-    return response.data.schemas;
+    console.log('Request headers:', {
+      ...headers,
+      'Authorization': headers.Authorization ? '***' + headers.Authorization.slice(-10) : 'missing'
+    });
+    
+    try {
+      const response = await axios.get(
+        url,
+        { headers }
+      );
+      console.log('Schema API Response:', response.data);
+      return response.data.results || [];
+    } catch (error: any) {
+      console.error('Schema API Error:', {
+        url,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers
+      });
+      throw error;
+    }
   }
 
   async createSchema(schema: Schema): Promise<Schema> {
+    const url = `${this.baseUrl}/data/foundation/schemaregistry/schemas`;
+    console.log('Making API call to:', url);
     const headers = await this.getHeaders();
     const response = await axios.post<Schema>(
-      `${this.baseUrl}/data/foundation/schemaregistry/schemas`,
+      url,
       schema,
       { headers }
     );
@@ -74,9 +135,11 @@ export class AEPService {
 
   // Datasets API
   async listDatasets(params: { limit?: number; offset?: number } = {}): Promise<Dataset[]> {
+    const url = `${this.baseUrl}/data/foundation/catalog/datasets`;
+    console.log('Making API call to:', url);
     const headers = await this.getHeaders();
     const response = await axios.get<{ datasets: Dataset[] }>(
-      `${this.baseUrl}/data/foundation/catalog/datasets`,
+      url,
       { headers, params }
     );
     return response.data.datasets;
