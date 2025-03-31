@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 import { createHmac } from 'crypto';
 import {
   Schema,
@@ -103,7 +103,7 @@ export class AEPService {
     });
     
     try {
-      const response = await axios.get(
+      const response = await axios.get<{ results: Schema[] }>(
         url,
         { headers }
       );
